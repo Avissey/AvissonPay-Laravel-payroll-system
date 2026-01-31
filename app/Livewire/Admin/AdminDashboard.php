@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use Livewire\Component;
+use App\Models\Employee;
+use App\Models\Department;
+use App\Models\Payroll;
+use App\Models\Attendance;
+use Livewire\Attributes\Title;
+use App\Models\User;
+
+
+#[Title('Admin Dashboard')]
+class AdminDashboard extends Component
+{
+    public $totalEmployees;
+    public $totalDepartments;
+    public $totalPayrolls;
+    public $attendanceRate;
+    public $totalUsers;
+
+    public function mount()
+    {
+        // Fetch totals dynamically
+        $this->totalEmployees  = Employee::count();
+        $this->totalDepartments = Department::count();
+        $this->totalPayrolls    = Payroll::count();
+        $this->totalUsers  = User::count();
+
+
+
+        // Example attendance calculation (adjust if you have a different structure)
+        $totalAttendance = Attendance::count();
+        $presentDays = Attendance::where('status', 'present')->count();
+        $this->attendanceRate = $totalAttendance > 0
+            ? round(($presentDays / $totalAttendance) * 100, 1)
+            : 0;
+    }
+
+    public function render()
+    {
+        return view('livewire.admin.admin-dashboard');
+    }
+}
