@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Install system dependencies (ADD nodejs & npm)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -10,8 +10,11 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     zip \
     curl \
-    nodejs \
-    npm
+    ca-certificates
+
+# Install Node.js 18 (REQUIRED for Tailwind v4)
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo pdo_mysql zip
@@ -34,15 +37,12 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Install Laravel dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Install JS deps & build Tailwind (THE FIX)
+# Install JS deps & build Tailwind
 RUN npm install
 RUN npm run build
 
-# Set permissions
+# Permissions
 RUN chown -R www-data:www-data storage bootstrap/cache
 
-# Expose port
 EXPOSE 80
-
-# Start Apache
 CMD ["apache2-foreground"]
