@@ -30,10 +30,9 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
 # Install JS deps & build Tailwind
-RUN npm install
-RUN npm run build
+RUN npm install && npm run build
 
-# Ensure storage and database exist and are writable
+# Prepare storage and database
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views && \
     touch storage/database.sqlite && \
     chown -R www-data:www-data /var/www/html && \
@@ -41,5 +40,5 @@ RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framewor
 
 EXPOSE 80
 
-# Run migrations and start Apache in one command
-CMD php artisan migrate --force && apache2-foreground
+# Use a simple string for CMD to avoid shell issues
+CMD ["sh", "-c", "php artisan migrate --force && apache2-foreground"]
