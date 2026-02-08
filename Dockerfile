@@ -45,6 +45,18 @@ RUN npm run build
 # Set correct permissions for storage, cache, and public directories
 RUN chown -R www-data:www-data storage bootstrap/cache public
 
+# Create the database directory and file
+RUN mkdir -p /var/www/html/database && \
+    touch /var/www/html/database/database.sqlite
+
+# Set permissions for the entire app and the database
+RUN chown -R www-data:www-data /var/www/html && \
+    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
+
+# Run migrations during the build (to prepare the schema)
+# Note: This creates the tables in the image itself
+RUN php artisan migrate --force
+
 EXPOSE 80
 CMD [
 "apache2-foreground"]
