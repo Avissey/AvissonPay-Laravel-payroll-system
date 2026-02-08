@@ -2,15 +2,7 @@ FROM php:8.2-apache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    libzip-dev \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    curl \
-    ca-certificates
+    git unzip libzip-dev libpng-dev libonig-dev libxml2-dev zip curl ca-certificates
 
 # Install Node.js 18
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
@@ -41,15 +33,13 @@ RUN composer install --no-dev --optimize-autoloader
 RUN npm install
 RUN npm run build
 
-# Set correct permissions for Laravel folders
-RUN chown -R www-data:www-data storage bootstrap/cache public && \
+# Ensure storage and database exist and are writable
+RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views && \
+    touch storage/database.sqlite && \
+    chown -R www-data:www-data /var/www/html && \
     chmod -R 775 storage bootstrap/cache
-
-# Copy and prepare the entrypoint script
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 80
 
-# Use the entrypoint script to handle database setup at runtime
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# Run migrations and start Apache in one command
+CMD php artisan migrate --force && apache2-foreground
