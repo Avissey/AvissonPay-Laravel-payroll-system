@@ -32,16 +32,21 @@ RUN composer install --no-dev --optimize-autoloader
 # Install JS deps & build Tailwind
 RUN npm install && npm run build
 
-# Prepare storage and database
-# We create the database file here during build to ensure it exists
-RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views database && \
-    touch database/database.sqlite && \
-    chown -R www-data:www-data /var/www/html && \
+# --- DATABASE & PERMISSIONS SETUP ---
+# 1. Create the database file
+RUN mkdir -p database storage/framework/cache storage/framework/sessions storage/framework/views && \
+    touch database/database.sqlite
+
+# 2. Run migrations DURING THE BUILD
+# This ensures the tables exist before the container ever starts on Render
+RUN php artisan migrate --force
+
+# 3. Set final permissions
+# We do this AFTER migrations so the file is already there
+RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 775 storage bootstrap/cache database
 
-# Set the PORT environment variable for Apache (Render requirement )
-ENV PORT=80
 EXPOSE 80
 
-# Start Apache directly
+# Start Apache immediately (no extra commands to slow it down )
 CMD ["apache2-foreground"]
