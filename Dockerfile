@@ -10,10 +10,9 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     zip \
     curl \
-    ca-certificates \
-    nodejs # Node.js is now installed via nodesource, but keep this for general dependencies
+    ca-certificates
 
-# Install Node.js 18 (REQUIRED for Tailwind v4) - Using official NodeSource script
+# Install Node.js 18
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs
 
@@ -29,7 +28,7 @@ COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy project files - This should happen BEFORE composer/npm install to ensure all files are present
+# Copy project files
 COPY . .
 
 # Install Composer
@@ -42,21 +41,15 @@ RUN composer install --no-dev --optimize-autoloader
 RUN npm install
 RUN npm run build
 
-# Set correct permissions for storage, cache, and public directories
-RUN chown -R www-data:www-data storage bootstrap/cache public
+# Set correct permissions for Laravel folders
+RUN chown -R www-data:www-data storage bootstrap/cache public && \
+    chmod -R 775 storage bootstrap/cache
 
-# Create the database directory and file
-RUN mkdir -p /var/www/html/database && \
-    touch /var/www/html/database/database.sqlite
-
-# Set permissions for the entire app and the database
-RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
-
-# Run migrations during the build (to prepare the schema)
-# Note: This creates the tables in the image itself
-RUN php artisan migrate --force
+# Copy and prepare the entrypoint script
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 80
-CMD [
-"apache2-foreground"]
+
+# Use the entrypoint script to handle database setup at runtime
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
