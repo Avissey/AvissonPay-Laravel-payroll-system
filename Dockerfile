@@ -2,14 +2,23 @@ FROM php:8.2-apache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git unzip libzip-dev libpng-dev libonig-dev libxml2-dev zip curl ca-certificates
+    git \
+    unzip \
+    libzip-dev \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    curl \
+    ca-certificates \
+    libpq-dev  # Required for PostgreSQL
 
 # Install Node.js 18
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql zip
+RUN docker-php-ext-install pdo pdo_pgsql pdo_mysql zip # Added pdo_pgsql
 
 # Enable Apache rewrite module
 RUN a2enmod rewrite
@@ -33,20 +42,16 @@ RUN composer install --no-dev --optimize-autoloader
 RUN npm install && npm run build
 
 # --- DATABASE & PERMISSIONS SETUP ---
-# 1. Create the database file
-RUN mkdir -p database storage/framework/cache storage/framework/sessions storage/framework/views && \
-    touch database/database.sqlite
-
-# 2. Run migrations DURING THE BUILD
+# Run migrations DURING THE BUILD to set up the PostgreSQL database
 # This ensures the tables exist before the container ever starts on Render
 RUN php artisan migrate --force
 
-# 3. Set final permissions
-# We do this AFTER migrations so the file is already there
-RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 775 storage bootstrap/cache database
+# Set final permissions for storage, cache, and public directories
+# Removed SQLite-specific database permissions and ensured public is included
+RUN chown -R www-data:www-data storage bootstrap/cache public && \
+    chmod -R 775 storage bootstrap/cache
 
 EXPOSE 80
 
-# Start Apache immediately (no extra commands to slow it down )
+# Start Apache immediately
 CMD ["apache2-foreground"]
